@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="sareeGradient" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#7b1e3a"/>
+      <stop offset="1" stop-color="#f4c542"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="64" height="64" rx="12" ry="12" fill="#0b0b0f"/>
+  <path d="M10 46 C 18 40, 24 24, 34 22 C 44 20, 50 28, 54 18" fill="none" stroke="url(#sareeGradient)" stroke-width="6" stroke-linecap="round"/>
+  <path d="M14 50 C 22 46, 30 34, 40 32 C 48 30, 52 34, 56 28" fill="none" stroke="#f4c542" stroke-width="3" stroke-linecap="round"/>
+  <text x="18" y="30" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="16" fill="#fef7e5" font-weight="700">
+    বিমল
+  </text>
+</svg>
