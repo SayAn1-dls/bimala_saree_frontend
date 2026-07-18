@@ -6,10 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Heart, ShoppingBag, Minus, Plus, Truck, Shield, RotateCcw, ChevronLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ProductCard } from "@/components/ui/ProductCard";
+import { VirtualTryOn } from "@/components/product/VirtualTryOn";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const ProductDetail = () => {
   const { id } = useParams();
   const { toast } = useToast();
+  const { t } = useLanguage();
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(0);
   const [isWishlisted, setIsWishlisted] = useState(false);
@@ -37,7 +40,7 @@ const ProductDetail = () => {
 
   const handleAddToCart = () => {
     toast({
-      title: "Added to Cart",
+      title: t("Added to Cart", "\u0995\u09be\u09b0\u09cd\u099f\u09c7 \u09af\u09cb\u0997 \u09b9\u09af\u09bc\u09c7\u099b\u09c7"),
       description: `${saree.name} (Qty: ${quantity}) has been added to your cart.`,
     });
   };
@@ -45,7 +48,9 @@ const ProductDetail = () => {
   const handleWishlist = () => {
     setIsWishlisted(!isWishlisted);
     toast({
-      title: isWishlisted ? "Removed from Wishlist" : "Added to Wishlist",
+      title: isWishlisted
+        ? t("Removed from Wishlist", "\u0989\u0987\u09b6\u09b2\u09bf\u09b8\u09cd\u099f \u09a5\u09c7\u0995\u09c7 \u09b8\u09b0\u09be\u09a8\u09cb \u09b9\u09af\u09bc\u09c7\u099b\u09c7")
+        : t("Added to Wishlist", "\u0989\u0987\u09b6\u09b2\u09bf\u09b8\u09cd\u099f\u09c7 \u09af\u09cb\u0997 \u09b9\u09af\u09bc\u09c7\u099b\u09c7"),
       description: saree.name,
     });
   };
@@ -60,7 +65,7 @@ const ProductDetail = () => {
             className="inline-flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors font-body text-sm"
           >
             <ChevronLeft className="h-4 w-4" />
-            Back to Shop
+            {t("Back to Shop", "\u09a6\u09cb\u0995\u09be\u09a8\u09c7 \u09ab\u09bf\u09b0\u09c7 \u09af\u09be\u09a8")}
           </Link>
         </nav>
 
@@ -92,6 +97,12 @@ const ProductDetail = () => {
                 ))}
               </div>
             )}
+
+            {/* Virtual Try-On */}
+            <VirtualTryOn
+              sareeImage={saree.images[selectedImage] || saree.image}
+              sareeName={saree.name}
+            />
           </div>
 
           {/* Product Details */}
@@ -100,12 +111,12 @@ const ProductDetail = () => {
             <div className="flex gap-2 mb-4">
               {saree.isNew && (
                 <span className="px-3 py-1 bg-primary text-primary-foreground text-xs font-semibold uppercase tracking-wider rounded">
-                  New Arrival
+                  {t("New Arrival", "\u09a8\u09a4\u09c1\u09a8 \u098f\u09b8\u09c7\u099b\u09c7")}
                 </span>
               )}
               {discount > 0 && (
                 <span className="px-3 py-1 bg-accent text-accent-foreground text-xs font-semibold rounded">
-                  {discount}% Off
+                  {discount}% {t("Off", "\u099b\u09be\u09dc")}
                 </span>
               )}
             </div>
@@ -119,11 +130,11 @@ const ProductDetail = () => {
             {/* Price */}
             <div className="flex items-baseline gap-3 mb-6">
               <span className="text-3xl font-display font-bold text-primary">
-                ₹{saree.price.toLocaleString()}
+                \u20b9{saree.price.toLocaleString()}
               </span>
               {saree.originalPrice && (
                 <span className="text-xl text-muted-foreground line-through font-body">
-                  ₹{saree.originalPrice.toLocaleString()}
+                  \u20b9{saree.originalPrice.toLocaleString()}
                 </span>
               )}
             </div>
@@ -136,26 +147,36 @@ const ProductDetail = () => {
             {/* Details */}
             <div className="grid grid-cols-2 gap-4 mb-6 py-6 border-y border-border">
               <div>
-                <p className="text-xs text-muted-foreground uppercase tracking-wider font-body">Fabric</p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wider font-body">
+                  {t("Fabric", "\u0995\u09be\u09aa\u09dc")}
+                </p>
                 <p className="font-semibold text-foreground font-body">{saree.fabric}</p>
               </div>
               <div>
-                <p className="text-xs text-muted-foreground uppercase tracking-wider font-body">Color</p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wider font-body">
+                  {t("Color", "\u09b0\u0999")}
+                </p>
                 <p className="font-semibold text-foreground font-body">{saree.color}</p>
               </div>
               <div>
-                <p className="text-xs text-muted-foreground uppercase tracking-wider font-body">Occasion</p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wider font-body">
+                  {t("Occasion", "\u0989\u09aa\u09b2\u0995\u09cd\u09b7")}
+                </p>
                 <p className="font-semibold text-foreground font-body">{saree.occasion}</p>
               </div>
               <div>
-                <p className="text-xs text-muted-foreground uppercase tracking-wider font-body">Length</p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wider font-body">
+                  {t("Length", "\u09a6\u09c8\u09b0\u09cd\u0998\u09cd\u09af")}
+                </p>
                 <p className="font-semibold text-foreground font-body">{saree.length}</p>
               </div>
             </div>
 
             {/* Quantity */}
             <div className="flex items-center gap-4 mb-6">
-              <span className="text-sm font-medium text-foreground font-body">Quantity:</span>
+              <span className="text-sm font-medium text-foreground font-body">
+                {t("Quantity:", "\u09aa\u09b0\u09bf\u09ae\u09be\u09a3:")}
+              </span>
               <div className="flex items-center border border-border rounded-lg">
                 <button
                   onClick={() => setQuantity(Math.max(1, quantity - 1))}
@@ -181,7 +202,7 @@ const ProductDetail = () => {
                 onClick={handleAddToCart}
               >
                 <ShoppingBag className="mr-2 h-5 w-5" />
-                Add to Cart
+                {t("Add to Cart", "\u0995\u09be\u09b0\u09cd\u099f\u09c7 \u09af\u09cb\u0997 \u0995\u09b0\u09c1\u09a8")}
               </Button>
               <Button
                 size="lg"
@@ -190,7 +211,9 @@ const ProductDetail = () => {
                 onClick={handleWishlist}
               >
                 <Heart className={`mr-2 h-5 w-5 ${isWishlisted ? "fill-primary" : ""}`} />
-                {isWishlisted ? "Wishlisted" : "Wishlist"}
+                {isWishlisted
+                  ? t("Wishlisted", "\u0989\u0987\u09b6\u09b2\u09bf\u09b8\u09cd\u099f\u09c7 \u0986\u099b\u09c7")
+                  : t("Wishlist", "\u0989\u0987\u09b6\u09b2\u09bf\u09b8\u09cd\u099f")}
               </Button>
             </div>
 
@@ -198,15 +221,15 @@ const ProductDetail = () => {
             <div className="space-y-3">
               <div className="flex items-center gap-3 text-sm text-muted-foreground font-body">
                 <Truck className="h-5 w-5 text-accent" />
-                <span>Free shipping on orders above ₹2,999</span>
+                <span>{t("Free shipping on orders above \u20b92,999", "\u20b92,999-\u098f\u09b0 \u0989\u09aa\u09b0\u09c7 \u09ac\u09bf\u09a8\u09be\u09ae\u09c2\u09b2\u09cd\u09af\u09c7 \u09b6\u09bf\u09aa\u09bf\u0982")}</span>
               </div>
               <div className="flex items-center gap-3 text-sm text-muted-foreground font-body">
                 <Shield className="h-5 w-5 text-accent" />
-                <span>100% Authentic Handloom Guaranteed</span>
+                <span>{t("100% Authentic Handloom Guaranteed", "\u09e7\u09e6\u09e6% \u0986\u09b8\u09b2 \u09b9\u09cd\u09af\u09be\u09a8\u09cd\u09a1\u09b2\u09c1\u09ae \u0997\u09cd\u09af\u09be\u09b0\u09be\u09a8\u09cd\u099f\u09bf")}</span>
               </div>
               <div className="flex items-center gap-3 text-sm text-muted-foreground font-body">
                 <RotateCcw className="h-5 w-5 text-accent" />
-                <span>Easy 7-day returns & exchanges</span>
+                <span>{t("Easy 7-day returns & exchanges", "\u09b8\u09b9\u099c \u09ed \u09a6\u09bf\u09a8\u09c7\u09b0 \u09b0\u09bf\u099f\u09be\u09b0\u09cd\u09a8 \u0993 \u098f\u0995\u09cd\u09b8\u099a\u09c7\u099e\u09cd\u099c")}</span>
               </div>
             </div>
           </div>
@@ -216,7 +239,7 @@ const ProductDetail = () => {
         {relatedSarees.length > 0 && (
           <section className="mt-16 lg:mt-24">
             <h2 className="text-2xl font-display font-bold text-foreground mb-8">
-              You May Also Like
+              {t("You May Also Like", "\u0986\u09aa\u09a8\u09bf \u098f\u099f\u09bf\u0993 \u09aa\u099b\u09a8\u09cd\u09a6 \u0995\u09b0\u09a4\u09c7 \u09aa\u09be\u09b0\u09c7\u09a8")}
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {relatedSarees.map((s) => (
