@@ -77,6 +77,12 @@ export default {
         },
         terracotta: "hsl(var(--terracotta))",
         olive: "hsl(var(--olive))",
+        // Luxury Palette — direct hex values
+        luxury: {
+          gold: "#D4AF37",
+          cream: "#FDFBF7",
+          charcoal: "#1A1A1A",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -108,6 +114,10 @@ export default {
           "0%": { opacity: "0", transform: "scale(0.95)" },
           "100%": { opacity: "1", transform: "scale(1)" },
         },
+        float: {
+          "0%, 100%": { transform: "translateY(0px)" },
+          "50%": { transform: "translateY(-8px)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -116,6 +126,7 @@ export default {
         "fade-in-up": "fade-in-up 0.6s ease-out forwards",
         "fade-in": "fade-in 0.4s ease-out forwards",
         "scale-in": "scale-in 0.4s ease-out forwards",
+        float: "float 6s ease-in-out infinite",
       },
       backgroundImage: {
         "gradient-gold": "var(--gradient-gold)",
