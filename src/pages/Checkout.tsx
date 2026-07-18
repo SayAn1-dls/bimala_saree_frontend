@@ -1,13 +1,43 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Trash2, Minus, Plus, ShoppingBag, ArrowRight, Truck, Shield } from "lucide-react";
+import { Trash2, Minus, Plus, ShoppingBag, ArrowRight, Truck, Shield, CreditCard } from "lucide-react";
 import saree1 from "@/assets/saree-1.jpg";
 import saree4 from "@/assets/saree-4.jpg";
+
+declare global {
+  interface Window {
+    Razorpay: new (options: RazorpayOptions) => RazorpayInstance;
+  }
+}
+
+interface RazorpayOptions {
+  key: string;
+  amount: number;
+  currency: string;
+  name: string;
+  description: string;
+  order_id?: string;
+  handler: (response: RazorpayResponse) => void;
+  prefill?: { name?: string; email?: string; contact?: string };
+  theme?: { color?: string };
+  modal?: { ondismiss?: () => void };
+}
+
+interface RazorpayInstance {
+  open: () => void;
+  on: (event: string, handler: () => void) => void;
+}
+
+interface RazorpayResponse {
+  razorpay_payment_id: string;
+  razorpay_order_id?: string;
+  razorpay_signature?: string;
+}
 
 interface CartItem {
   id: string;
@@ -23,7 +53,7 @@ const initialCart: CartItem[] = [
   {
     id: "1",
     name: "Royal Red Banarasi Silk",
-    nameBn: "রয়্যাল রেড বেনারসি সিল্ক",
+    nameBn: "\u09b0\u09af\u09cd\u09af\u09be\u09b2 \u09b0\u09c7\u09a1 \u09ac\u09c7\u09a8\u09be\u09b0\u09b8\u09bf \u09b8\u09bf\u09b2\u09cd\u0995",
     price: 15999,
     image: saree1,
     quantity: 1,
@@ -32,7 +62,7 @@ const initialCart: CartItem[] = [
   {
     id: "4",
     name: "Coral Pink Tussar",
-    nameBn: "প্রবাল গোলাপী তুসার",
+    nameBn: "\u09aa\u09cd\u09b0\u09ac\u09be\u09b2 \u0997\u09cb\u09b2\u09be\u09aa\u09c0 \u09a4\u09c1\u09b8\u09be\u09b0",
     price: 8999,
     image: saree4,
     quantity: 2,
@@ -40,11 +70,26 @@ const initialCart: CartItem[] = [
   },
 ];
 
+const loadRazorpayScript = (): Promise<boolean> => {
+  return new Promise((resolve) => {
+    if (window.Razorpay) {
+      resolve(true);
+      return;
+    }
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+};
+
 const Checkout = () => {
   const { toast } = useToast();
   const [cart, setCart] = useState<CartItem[]>(initialCart);
   const [step, setStep] = useState(1);
   const [couponCode, setCouponCode] = useState("");
+  const [paymentProcessing, setPaymentProcessing] = useState(false);
   const [address, setAddress] = useState({
     fullName: "",
     phone: "",
@@ -58,6 +103,8 @@ const Checkout = () => {
   const subtotal = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
   const shipping = subtotal > 2999 ? 0 : 99;
   const total = subtotal + shipping;
+
+  const razorpayKeyId = import.meta.env.VITE_RAZORPAY_KEY_ID as string | undefined;
 
   const updateQuantity = (id: string, delta: number) => {
     setCart((prev) =>
@@ -82,11 +129,80 @@ const Checkout = () => {
     }
   };
 
-  const handlePlaceOrder = () => {
-    toast({
-      title: "Order Placed Successfully!",
-      description: "Thank you for your order. You will receive a confirmation email shortly.",
+  const handleRazorpayPayment = useCallback(async () => {
+    setPaymentProcessing(true);
+
+    const loaded = await loadRazorpayScript();
+    if (!loaded) {
+      toast({
+        title: "Payment Error",
+        description: "Failed to load Razorpay. Please check your internet connection.",
+        variant: "destructive",
+      });
+      setPaymentProcessing(false);
+      return;
+    }
+
+    if (!razorpayKeyId) {
+      toast({
+        title: "Payment (Demo Mode)",
+        description:
+          "Razorpay key not configured. Set VITE_RAZORPAY_KEY_ID in your .env file. Simulating success\u2026",
+      });
+      setTimeout(() => {
+        toast({
+          title: "Order Placed Successfully! \ud83c\udf89",
+          description: "Thank you for your order. You will receive a confirmation email shortly.",
+        });
+        setPaymentProcessing(false);
+        setCart([]);
+        setStep(1);
+      }, 1500);
+      return;
+    }
+
+    const options: RazorpayOptions = {
+      key: razorpayKeyId,
+      amount: total * 100,
+      currency: "INR",
+      name: "\u09ac\u09bf\u09ae\u09b2 \u09b6\u09be\u09dc\u09c0 \u09b8\u09cd\u099f\u09cb\u09b0",
+      description: `Order of ${cart.length} item(s)`,
+      handler: (response: RazorpayResponse) => {
+        toast({
+          title: "Payment Successful! \ud83c\udf89",
+          description: `Payment ID: ${response.razorpay_payment_id}`,
+        });
+        setCart([]);
+        setStep(1);
+        setPaymentProcessing(false);
+      },
+      prefill: {
+        name: address.fullName,
+        contact: address.phone,
+      },
+      theme: { color: "#8B1A1A" },
+      modal: {
+        ondismiss: () => {
+          setPaymentProcessing(false);
+          toast({ title: "Payment Cancelled", description: "You cancelled the payment." });
+        },
+      },
+    };
+
+    const rzp = new window.Razorpay(options);
+    rzp.on("payment.failed", () => {
+      setPaymentProcessing(false);
+      toast({
+        title: "Payment Failed",
+        description: "Something went wrong. Please try again.",
+        variant: "destructive",
+      });
     });
+    rzp.open();
+  }, [razorpayKeyId, total, cart.length, address.fullName, address.phone, toast]);
+
+  const handlePlaceOrder = () => {
+    handleRazorpayPayment();
   };
 
   return (
@@ -186,7 +302,7 @@ const Checkout = () => {
                                 </button>
                               </div>
                               <p className="font-display font-bold text-primary">
-                                ₹{(item.price * item.quantity).toLocaleString()}
+                                \u20b9{(item.price * item.quantity).toLocaleString()}
                               </p>
                             </div>
                           </div>
@@ -282,21 +398,28 @@ const Checkout = () => {
                 {step === 3 && (
                   <div className="bg-card rounded-xl p-6 shadow-soft">
                     <h2 className="font-display font-semibold text-lg mb-6">
-                      Payment Method
+                      Payment
                     </h2>
                     <div className="space-y-4">
-                      <label className="flex items-center gap-3 p-4 border border-border rounded-lg cursor-pointer hover:border-primary transition-colors">
-                        <input type="radio" name="payment" defaultChecked className="h-4 w-4 text-primary" />
-                        <span className="font-body">Cash on Delivery (COD)</span>
-                      </label>
-                      <label className="flex items-center gap-3 p-4 border border-border rounded-lg cursor-pointer hover:border-primary transition-colors">
-                        <input type="radio" name="payment" className="h-4 w-4 text-primary" />
-                        <span className="font-body">UPI / Net Banking</span>
-                      </label>
-                      <label className="flex items-center gap-3 p-4 border border-border rounded-lg cursor-pointer hover:border-primary transition-colors">
-                        <input type="radio" name="payment" className="h-4 w-4 text-primary" />
-                        <span className="font-body">Credit / Debit Card</span>
-                      </label>
+                      <div className="flex items-center gap-4 p-4 border border-primary rounded-lg bg-primary/5">
+                        <CreditCard className="h-8 w-8 text-primary" />
+                        <div>
+                          <p className="font-body font-semibold">Razorpay Secure Checkout</p>
+                          <p className="text-sm text-muted-foreground font-body">
+                            Pay via UPI, Cards, Net Banking, Wallets & more
+                          </p>
+                        </div>
+                      </div>
+                      <div className="p-4 bg-muted/50 rounded-lg">
+                        <p className="text-sm text-muted-foreground font-body">
+                          \ud83d\udd12 Your payment is secured with 256-bit SSL encryption.
+                          {!razorpayKeyId && (
+                            <span className="block mt-2 text-amber-600">
+                              \u26a0\ufe0f Demo mode: VITE_RAZORPAY_KEY_ID not set. Payment will be simulated.
+                            </span>
+                          )}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -327,19 +450,19 @@ const Checkout = () => {
                   <div className="space-y-3 py-4 border-y border-border">
                     <div className="flex justify-between font-body text-sm">
                       <span className="text-muted-foreground">Subtotal</span>
-                      <span>₹{subtotal.toLocaleString()}</span>
+                      <span>\u20b9{subtotal.toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between font-body text-sm">
                       <span className="text-muted-foreground">Shipping</span>
                       <span className={shipping === 0 ? "text-green-600" : ""}>
-                        {shipping === 0 ? "Free" : `₹${shipping}`}
+                        {shipping === 0 ? "Free" : `\u20b9${shipping}`}
                       </span>
                     </div>
                   </div>
 
                   <div className="flex justify-between py-4 font-display font-bold text-lg">
                     <span>Total</span>
-                    <span className="text-primary">₹{total.toLocaleString()}</span>
+                    <span className="text-primary">\u20b9{total.toLocaleString()}</span>
                   </div>
 
                   {step < 3 ? (
@@ -354,8 +477,19 @@ const Checkout = () => {
                     <Button
                       className="w-full btn-primary font-body"
                       onClick={handlePlaceOrder}
+                      disabled={paymentProcessing}
                     >
-                      Place Order
+                      {paymentProcessing ? (
+                        <>
+                          <span className="animate-spin mr-2">\u23f3</span>
+                          Processing\u2026
+                        </>
+                      ) : (
+                        <>
+                          <CreditCard className="mr-2 h-4 w-4" />
+                          Pay \u20b9{total.toLocaleString()}
+                        </>
+                      )}
                     </Button>
                   )}
 
@@ -373,11 +507,11 @@ const Checkout = () => {
                   <div className="mt-6 pt-6 border-t border-border space-y-3">
                     <div className="flex items-center gap-2 text-sm text-muted-foreground font-body">
                       <Truck className="h-4 w-4 text-accent" />
-                      <span>Free shipping above ₹2,999</span>
+                      <span>Free shipping above \u20b92,999</span>
                     </div>
                     <div className="flex items-center gap-2 text-sm text-muted-foreground font-body">
                       <Shield className="h-4 w-4 text-accent" />
-                      <span>Secure payment</span>
+                      <span>Secure payment via Razorpay</span>
                     </div>
                   </div>
                 </div>
