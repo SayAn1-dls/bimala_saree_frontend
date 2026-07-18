@@ -5,24 +5,122 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Phone } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
 const Login = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const {
+    signInWithEmail,
+    signInWithGoogle,
+    signInWithFacebook,
+    sendPhoneOtp,
+    verifyPhoneOtp,
+    isMockMode,
+  } = useAuth();
+
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [loginMode, setLoginMode] = useState<"email" | "phone">("email");
+  const [otpSent, setOtpSent] = useState(false);
   const [formData, setFormData] = useState({
     email: "",
     password: "",
+    phone: "",
+    otp: "",
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast({
-      title: "Login Successful",
-      description: "Welcome back to বিমল শাড়ী স্টোর!",
-    });
-    navigate("/");
+    setLoading(true);
+    try {
+      if (isMockMode) {
+        toast({
+          title: "Login Successful (Mock)",
+          description: "Welcome back to বিমল শাড়ী স্টোর!",
+        });
+        navigate("/");
+        return;
+      }
+      await signInWithEmail(formData.email, formData.password);
+      toast({
+        title: "Login Successful",
+        description: "Welcome back to বিমল শাড়ী স্টোর!",
+      });
+      navigate("/");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Login failed";
+      toast({ title: "Error", description: message, variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSendOtp = async () => {
+    if (!formData.phone) return;
+    setLoading(true);
+    try {
+      if (isMockMode) {
+        setOtpSent(true);
+        toast({ title: "OTP Sent (Mock)", description: `OTP sent to ${formData.phone}` });
+        return;
+      }
+      await sendPhoneOtp(formData.phone);
+      setOtpSent(true);
+      toast({ title: "OTP Sent", description: `Verification code sent to ${formData.phone}` });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to send OTP";
+      toast({ title: "Error", description: message, variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      if (isMockMode) {
+        toast({ title: "Login Successful (Mock)", description: "Phone verified!" });
+        navigate("/");
+        return;
+      }
+      await verifyPhoneOtp(formData.phone, formData.otp);
+      toast({ title: "Login Successful", description: "Phone verified!" });
+      navigate("/");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Invalid OTP";
+      toast({ title: "Error", description: message, variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    try {
+      if (isMockMode) {
+        toast({ title: "Google Login (Mock)", description: "Supabase not configured. Set env vars." });
+        return;
+      }
+      await signInWithGoogle();
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Google login failed";
+      toast({ title: "Error", description: message, variant: "destructive" });
+    }
+  };
+
+  const handleFacebookLogin = async () => {
+    try {
+      if (isMockMode) {
+        toast({ title: "Facebook Login (Mock)", description: "Supabase not configured. Set env vars." });
+        return;
+      }
+      await signInWithFacebook();
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Facebook login failed";
+      toast({ title: "Error", description: message, variant: "destructive" });
+    }
   };
 
   return (
@@ -40,55 +138,143 @@ const Login = () => {
               </p>
             </div>
 
-            {/* Form */}
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="email" className="font-body">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="your@email.com"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="input-elegant font-body"
-                  required
-                />
-              </div>
+            {/* Mode Toggle */}
+            <div className="flex rounded-lg border border-border mb-6 overflow-hidden">
+              <button
+                type="button"
+                onClick={() => { setLoginMode("email"); setOtpSent(false); }}
+                className={`flex-1 py-2.5 text-sm font-body font-medium transition-colors ${
+                  loginMode === "email"
+                    ? "bg-primary text-primary-foreground"
+                    : "hover:bg-muted"
+                }`}
+              >
+                Email
+              </button>
+              <button
+                type="button"
+                onClick={() => { setLoginMode("phone"); setOtpSent(false); }}
+                className={`flex-1 py-2.5 text-sm font-body font-medium transition-colors ${
+                  loginMode === "phone"
+                    ? "bg-primary text-primary-foreground"
+                    : "hover:bg-muted"
+                }`}
+              >
+                <Phone className="inline-block h-3.5 w-3.5 mr-1 -mt-0.5" />
+                Phone OTP
+              </button>
+            </div>
 
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="password" className="font-body">Password</Label>
-                  <Link
-                    to="/forgot-password"
-                    className="text-sm text-primary hover:underline font-body"
-                  >
-                    Forgot Password?
-                  </Link>
-                </div>
-                <div className="relative">
+            {/* Email Form */}
+            {loginMode === "email" && (
+              <form onSubmit={handleEmailLogin} className="space-y-6">
+                <div className="space-y-2">
+                  <Label htmlFor="email" className="font-body">Email</Label>
                   <Input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="••••••••"
-                    value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    className="input-elegant font-body pr-10"
+                    id="email"
+                    type="email"
+                    placeholder="your@email.com"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    className="input-elegant font-body"
                     required
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
                 </div>
-              </div>
 
-              <Button type="submit" className="w-full btn-primary font-body">
-                Sign In
-              </Button>
-            </form>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="password" className="font-body">Password</Label>
+                    <Link
+                      to="/forgot-password"
+                      className="text-sm text-primary hover:underline font-body"
+                    >
+                      Forgot Password?
+                    </Link>
+                  </div>
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="••••••••"
+                      value={formData.password}
+                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                      className="input-elegant font-body pr-10"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                <Button type="submit" className="w-full btn-primary font-body" disabled={loading}>
+                  {loading ? "Signing In…" : "Sign In"}
+                </Button>
+              </form>
+            )}
+
+            {/* Phone OTP Form */}
+            {loginMode === "phone" && (
+              <form onSubmit={handleVerifyOtp} className="space-y-6">
+                <div className="space-y-2">
+                  <Label htmlFor="phone" className="font-body">Phone Number</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="phone"
+                      type="tel"
+                      placeholder="+91 98765 43210"
+                      value={formData.phone}
+                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                      className="input-elegant font-body flex-1"
+                      required
+                      disabled={otpSent}
+                    />
+                    {!otpSent && (
+                      <Button
+                        type="button"
+                        onClick={handleSendOtp}
+                        disabled={loading || !formData.phone}
+                        className="font-body shrink-0"
+                      >
+                        {loading ? "Sending…" : "Send OTP"}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                {otpSent && (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="otp" className="font-body">Enter OTP</Label>
+                      <Input
+                        id="otp"
+                        type="text"
+                        placeholder="123456"
+                        maxLength={6}
+                        value={formData.otp}
+                        onChange={(e) => setFormData({ ...formData, otp: e.target.value })}
+                        className="input-elegant font-body text-center tracking-[0.3em] text-lg"
+                        required
+                      />
+                    </div>
+                    <Button type="submit" className="w-full btn-primary font-body" disabled={loading}>
+                      {loading ? "Verifying…" : "Verify & Sign In"}
+                    </Button>
+                    <button
+                      type="button"
+                      onClick={() => { setOtpSent(false); setFormData({ ...formData, otp: "" }); }}
+                      className="w-full text-sm text-primary hover:underline font-body"
+                    >
+                      Change phone number
+                    </button>
+                  </>
+                )}
+              </form>
+            )}
 
             {/* Divider */}
             <div className="relative my-8">
@@ -104,28 +290,16 @@ const Login = () => {
 
             {/* Social Login */}
             <div className="grid grid-cols-2 gap-4">
-              <Button variant="outline" className="font-body">
+              <Button variant="outline" className="font-body" onClick={handleGoogleLogin}>
                 <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
-                  <path
-                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                    fill="#4285F4"
-                  />
-                  <path
-                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                    fill="#34A853"
-                  />
-                  <path
-                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                    fill="#FBBC05"
-                  />
-                  <path
-                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                    fill="#EA4335"
-                  />
+                  <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
+                  <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+                  <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
+                  <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
                 </svg>
                 Google
               </Button>
-              <Button variant="outline" className="font-body">
+              <Button variant="outline" className="font-body" onClick={handleFacebookLogin}>
                 <svg className="mr-2 h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
                 </svg>
